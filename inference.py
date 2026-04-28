@@ -4,11 +4,21 @@ import joblib
 import numpy as np
 import pandas as pd
 
-BASE_DIR = Path(__file__).resolve().parents[1]
+APP_DIR = Path(__file__).resolve().parent
+BASE_DIR = APP_DIR.parent if APP_DIR.name == 'webapp' else APP_DIR
+
 PRED_DIR = BASE_DIR / 'clinical_prediction'
+if not PRED_DIR.exists():
+    PRED_DIR = BASE_DIR
+
 CLUSTER_DIR = BASE_DIR / 'phenotype_clustering'
 CLUSTER_METADATA = CLUSTER_DIR / 'cluster_metadata.json'
+if not CLUSTER_METADATA.exists():
+    CLUSTER_METADATA = BASE_DIR / 'cluster_metadata.json'
+
 CLUSTER_DATA = CLUSTER_DIR / 'phenotype_analysis_dataset_revised.csv'
+if not CLUSTER_DATA.exists():
+    CLUSTER_DATA = BASE_DIR / 'phenotype_analysis_dataset_revised.csv'
 
 
 def enrich_cluster_meta(cluster_meta: dict) -> dict:
@@ -30,8 +40,12 @@ def enrich_cluster_meta(cluster_meta: dict) -> dict:
 
 
 def load_assets():
-    model_path = next(PRED_DIR.glob('best_model_*.joblib'))
-    model = joblib.load(model_path)
+    model_paths = sorted(PRED_DIR.glob('best_model_*.joblib'))
+    if not model_paths:
+        raise FileNotFoundError(f'No model file matching best_model_*.joblib found in {PRED_DIR}')
+    if not CLUSTER_METADATA.exists():
+        raise FileNotFoundError(f'Cluster metadata not found at {CLUSTER_METADATA}')
+    model = joblib.load(model_paths[0])
     with open(CLUSTER_METADATA, 'r', encoding='utf-8') as f:
         cluster_meta = json.load(f)
     cluster_meta = enrich_cluster_meta(cluster_meta)
